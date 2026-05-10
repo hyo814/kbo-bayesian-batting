@@ -1,0 +1,30 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# 가상환경
+.venv/
+venv/
+env/
+
+# 크롤러 런타임 산출물 (배포에는 불필요)
+cache/
+logs/
+
+# 개인 라인업 데이터 (python crawler.py 실행 시 자동 생성)
+manual_lineups.json
+
+# 백업/임시
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 에디터
+.vscode/
+.idea/
+*.swp
