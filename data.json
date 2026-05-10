@@ -1,0 +1,133 @@
+{
+  "fetched_at": "2026-05-10T14:45:00.361227",
+  "players": [
+    {
+      "player": "가상타자A",
+      "team": "SSG",
+      "batHand": "L",
+      "lineupPos": 1,
+      "isStarting": true,
+      "game": "SSG vs 롯데 (인천)",
+      "isHome": true,
+      "oppPitcher": "가상투수1",
+      "oppHand": "L",
+      "vsLefty": 0.875,
+      "vsRighty": 0.38,
+      "homeAvg": 0.43,
+      "awayAvg": 0.31,
+      "last10Avg": 0.269,
+      "note": "좌투 스플릿 표본이 작은 케이스 (축소 효과 예시)",
+      "rosterStatus": "active",
+      "seasonAvg": 0.397
+    },
+    {
+      "player": "가상타자B",
+      "team": "삼성",
+      "batHand": "L",
+      "lineupPos": 2,
+      "isStarting": true,
+      "game": "삼성 vs NC (대구)",
+      "isHome": true,
+      "oppPitcher": "가상투수2",
+      "oppHand": "R",
+      "vsLefty": 0.31,
+      "vsRighty": 0.395,
+      "homeAvg": 0.35,
+      "awayAvg": 0.33,
+      "last10Avg": 0.35,
+      "note": "스플릿 편차가 작은 기본 케이스",
+      "rosterStatus": "active",
+      "seasonAvg": 0.357
+    },
+    {
+      "player": "가상타자C",
+      "team": "두산",
+      "batHand": "R",
+      "lineupPos": 3,
+      "isStarting": true,
+      "game": "두산 vs KIA (잠실)",
+      "isHome": true,
+      "oppPitcher": "가상투수3",
+      "oppHand": "R",
+      "vsLefty": 0.35,
+      "vsRighty": 0.38,
+      "homeAvg": 0.35,
+      "awayAvg": 0.29,
+      "last10Avg": 0.33,
+      "note": "홈/원정 차이가 큰 케이스",
+      "rosterStatus": "active",
+      "seasonAvg": 0.333
+    },
+    {
+      "player": "가상타자D",
+      "team": "한화",
+      "batHand": "R",
+      "lineupPos": 4,
+      "isStarting": true,
+      "game": "한화 vs LG (대전)",
+      "isHome": true,
+      "oppPitcher": "가상투수4",
+      "oppHand": "L",
+      "vsLefty": 0.35,
+      "vsRighty": 0.39,
+      "homeAvg": 0.3,
+      "awayAvg": 0.28,
+      "last10Avg": 0.31,
+      "note": "좌투 상대 시 변동성 있음",
+      "rosterStatus": "active",
+      "seasonAvg": 0.333
+    },
+    {
+      "player": "가상타자E",
+      "team": "KIA",
+      "batHand": "R",
+      "lineupPos": 2,
+      "isStarting": true,
+      "game": "두산 vs KIA (잠실)",
+      "isHome": false,
+      "oppPitcher": "가상투수5",
+      "oppHand": "R",
+      "vsLefty": 0.27,
+      "vsRighty": 0.255,
+      "homeAvg": 0.26,
+      "awayAvg": 0.25,
+      "stadiumAvg": {
+        "잠실": {
+          "avg": 0.42,
+          "ab": 30
+        },
+        "수원": {
+          "avg": 0.18,
+          "ab": 18
+        },
+        "사직": {
+          "avg": 0.25,
+          "ab": 22
+        }
+      },
+      "last10Avg": 0.31,
+      "note": "구장별 기록이 있는 케이스 (잠실 강함, 수원 약함)",
+      "rosterStatus": "active",
+      "seasonAvg": 0.273
+    },
+    {
+      "player": "가상타자F",
+      "team": "KT",
+      "batHand": "R",
+      "lineupPos": 4,
+      "isStarting": false,
+      "game": "KT vs 키움 (수원)",
+      "isHome": true,
+      "oppPitcher": "가상투수6",
+      "oppHand": "R",
+      "vsLefty": 0.35,
+      "vsRighty": 0.38,
+      "homeAvg": 0.35,
+      "awayAvg": 0.3,
+      "last10Avg": 0.0,
+      "note": "부상 이탈",
+      "rosterStatus": "unverified",
+      "seasonAvg": 0.0
+    }
+  ]
+}
