@@ -28,3 +28,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# OMC 런타임 상태
+.omc/

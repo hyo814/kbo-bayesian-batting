@@ -1,92 +1,122 @@
-# KBO Bayesian Batting
+# KBO 안타 확률 추정 모델
+
+KBO 타자가 **한 경기에서 안타를 1개 이상 칠 확률**을 추정하는 Flask 웹앱입니다.
+시즌/최근/좌우/홈·원정/구장별 기록을 섞을 때 생기는 **작은 표본 문제**를 베이지안 축소(Bayesian shrinkage)로 다루는 것을 목표로 만든 개인 학습 프로젝트입니다.
+
+> 개인 학습용 프로젝트입니다. 특정 선수 선택이나 금전적 판단을 권하지 않으며, 추정치의 정확성을 보장하지 않습니다.
+
+## 기술 스택
+
+Python 3.11 · Flask · gunicorn · requests · BeautifulSoup4 · Render
+
+## 1. 문제 — 표본이 작은 기록은 믿기 어렵다
+
+"좌투수 상대 타율 .875"는 인상적이지만, 8타수 7안타일 수도 있습니다.
+기록을 세분화할수록(좌/우 → 홈/원정 → 구장별) 신호보다 노이즈가 커집니다.
+그렇다고 세분화된 기록을 버리면 실제로 존재하는 매치업 차이까지 잃게 됩니다.
+
+→ **표본이 작으면 더 넓은 기록 쪽으로 끌어당기고, 표본이 크면 관측값을 믿는** 방식이 필요했습니다.
+
+## 2. 접근 — 계층형 베이지안 축소
+
+### 축소 공식
+
+```
+shrunk = (n × 관측값 + k × prior) / (n + k)
+```
+
+- `n`: 해당 기록의 타수(AB)
+- `k`: prior를 몇 타수만큼 믿을지 (의사 타수, pseudo-count)
+
+### prior 체인
+
+세분화된 기록일수록 바로 위 단계의 **축소된 값**을 prior로 씁니다.
+
+```
+리그 평균 0.265
+  └─ 시즌 타율          (k=200)
+       ├─ 최근 10경기    (k=100)
+       ├─ 좌/우투 스플릿  (k=100)
+       └─ 홈/원정        (k=100)
+            └─ 구장별    (k=80, 데이터 있을 때만)
+```
+
+### 예시 (샘플 데이터)
+
+| 기록 | 원본 | 타수 | 축소 후 |
+|---|---|---|---|
+| 시즌 타율 | .397 | 120 | **.315** |
+| vs 좌투 | .875 | 50 | **.501** |
+| 홈 타율 | .430 | 60 | **.358** |
+
+.875라는 극단값이 .501로 당겨집니다. 여전히 "좌투에 강하다"는 신호는 남지만 과신은 줄어듭니다.
+
+## 3. 경기 단위 확률로 변환
+
+```
+perAB      = 0.30 × 시즌 + 0.30 × 최근10 + 0.25 × 좌우 + 0.15 × 구장(없으면 홈/원정)
+expectedPA = 5.0 - (타순 - 1) × 0.15
+P(1안타+)  = 1 - (1 - perAB) ^ expectedPA
+```
+
+- 타순이 앞일수록 타석이 많다는 점을 예상 타석 수로 반영했습니다.
+- 타석을 독립 시행으로 가정하고 여사건(0안타 확률)으로 계산합니다.
+
+## 4. 데이터 수집 — `kbo_crawler.py`
+
+KBO 공식 기록 페이지에서 시즌 타율을 수집합니다. 대상 사이트에 부담을 주지 않는 것을 우선했습니다.
+
+- **robots.txt 준수**: 금지 경로(`/Common`, `/Help`, `/Member`, `/ws`)는 요청 전에 예외로 막음
+- **Rate limiting**: 요청 간 최소 3초
+- **TTL 파일 캐시**: 시즌 기록 24시간, 일정 1시간
+- **User-Agent 명시**
+
+### 부딪힌 문제: 로스터 검증
+
+라인업에 방출·이적한 선수가 섞이면 추정 자체가 무의미해집니다.
+처음에는 KBO 선수 등록 페이지(`Register.aspx`)로 팀별 로스터를 확인하려 했습니다.
+
+- ASP.NET 페이지라 GET 쿼리스트링(`TeamCode`)을 무시함
+- ViewState/EventValidation hidden field를 추출해 POST로 재전송하는 흐름을 구현했으나, 페이지가 `__doPostBack` 패턴을 쓰지 않아 동작하지 않음
+
+**대안**: "시즌 타율 페이지에 잡히는 선수 = 활성 선수"라는 근사치를 사용했습니다.
+
+| 상태 | 의미 | 처리 |
+|---|---|---|
+| `active` | 시즌 타율 풀에 있음 | 계산 포함 |
+| `unverified` | 풀에 없음 (규정타석 미달, 신인 등) | 포함하되 UI에 ⚠ 표시 |
+| `released` / `demoted` / `injured` | 수동 마킹 | 제외 |
+| `unknown` | 풀 수집 실패 | 포함 |
+
+완벽한 검증 대신, 검증 실패를 **숨기지 않고 드러내는** 쪽을 택했습니다.
+
+## 실행
 
 ```bash
-cd kbo-bayesian-batting
-git init
-git add .
-git commit -m "init"
-git branch -M main
-git remote add origin https://github.com/본인계정/kbo-bayesian-batting.git
-git push -u origin main
+pip install -r requirements.txt
+
+python crawler.py   # manual_lineups.json + 시즌 타율 → data.json
+python app.py       # http://localhost:5000
 ```
 
-### 2. Render 연결
-- render.com 가입 (GitHub로 로그인 가능)
-- New + → Blueprint
-- 방금 만든 리포 선택
-- `render.yaml` 자동 인식 → 그대로 Apply
-- 1~2분 후 URL 발급 (예: `https://kbo-bayesian-batting.onrender.com`)
+- 첫 실행 시 `manual_lineups.json` 샘플이 생성됩니다. 라인업·상대 투수·스플릿 기록은 이 파일에 직접 입력합니다.
+- `render.yaml`로 Render에 배포할 수 있습니다.
 
-## 매일 — 데이터 갱신
-
-라인업이 발표되면 PC에서 5분 작업:
-
-```bash
-# 1. 라인업 파일 수정
-# manual_lineups.json 열어서 오늘 경기로 변경
-# (선수명, 타순, 상대 투수, 상대 투수 좌/우 정도만)
-
-# 2. 시즌 타율 자동 수집
-python crawler.py
-# → data.json 갱신됨
-
-# 3. 깃 푸시
-git commit -am "data: 5/11"
-git push
-
-# → Render가 자동 재배포 (1~2분)
-# → 폰 새로고침하면 새 데이터
-```
-
-## 폴더 구조
+## 구조
 
 ```
-kbo-bayesian-batting/
-├── app.py              # Flask 앱 (UI + 알고리즘)
-├── crawler.py          # 매일 PC에서 실행
-├── kbo_crawler.py      # KBO 윤리적 크롤러 코어
-├── data.json           # 현재 추천 데이터 (배포에 포함)
-├── manual_lineups.json # 매일 손으로 입력 (crawler가 자동 생성)
-├── requirements.txt    # Python 의존성
-├── Procfile            # gunicorn 실행 설정
-├── render.yaml         # Render 자동 설정
-└── .gitignore
+app.py            # 확률 계산 + Flask API(/api/recommend) + UI
+crawler.py        # 수동 라인업 + 크롤링 결과 병합, 로스터 검증
+kbo_crawler.py    # rate limit / 캐시 / robots 가드가 들어간 크롤러
+data.json         # 가상 선수 샘플 데이터 (실제 수집 데이터 아님)
 ```
 
-## 가중치 튜닝
+## 한계와 다음 단계
 
-`app.py` 의 WEIGHTS 상수:
+솔직하게 적어두면, 아직 "모델"이라기보다 **근거 있는 휴리스틱**에 가깝습니다.
 
-```python
-WEIGHTS = {'season': 0.30, 'recent': 0.30, 'hand': 0.25, 'park': 0.15}
-```
-
-작년 데이터로 백테스트 후 본인이 조정.
-
-## 트러블슈팅
-
-### Render 배포 실패
-- 빌드 로그에서 에러 확인 (Render 대시보드 → Logs)
-- 보통 `requirements.txt` 의존성 충돌 → 버전 수정
-
-### "데이터 없음" 표시
-- `data.json`이 비어있거나 push 안 된 상태
-- PC에서 `python crawler.py` 실행 → push
-
-### 첫 접속 시 느림
-- Render free tier는 15분 무활동 시 슬립
-- 첫 요청에 30초~1분 걸림 (콜드스타트)
-- 사용 빈도 높으면 paid plan ($7/월) 검토
-
-### crawler가 빈 데이터 반환
-- KBO 사이트가 ASP.NET이라 requests로 안 될 가능성
-- README에 적힌 Playwright 전환 검토 필요
-- 또는 manual_lineups.json에 시즌 타율도 직접 입력 가능
-
-## 회색지대 회피 정책
-
-- ✅ KBO 공식 사이트만 사용
-- ✅ robots.txt 금지 경로 자동 차단
-- ✅ Rate limiting (3초 간격)
-- ✅ 24시간 캐싱
-- ✅ User-Agent에 본인 정체 명시
+- **검증 부재**: 가중치(0.30/0.30/0.25/0.15)와 `k` 값은 직관으로 정했습니다. 지난 시즌 데이터로 백테스트(Brier score, calibration curve)를 해야 합니다.
+- **타수 정보 미연결**: 크롤러가 시즌 타수를 수집하지만 아직 병합하지 않아, 계산은 기본 타수(`DEFAULT_AB`)를 씁니다.
+- **타석 독립 가정**: 같은 투수와의 반복 대결, 불펜 교체 등을 반영하지 않습니다.
+- **수동 입력 의존**: 라인업과 스플릿 기록은 손으로 입력합니다. 라인업 발표 시점 자동화(Playwright)가 다음 과제입니다.
+- **가중평균 구조**: 스플릿들이 서로 독립이 아닌데 선형 결합합니다. log5나 로지스틱 회귀로 바꿔볼 여지가 있습니다.
